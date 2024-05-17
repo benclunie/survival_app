@@ -52,17 +52,20 @@ server <- function(input, output) {
     print(head(df))
     df
   })
+  
   analysisResults <- eventReactive(input$analyze, {
     df <- data()
     timeVar <- input$timeVar
     eventVar <- input$eventVar
     treatmentVar <- input$treatmentVar
     doseVar <- input$doseVar
+    
     # Ensure the specified columns exist in the data frame
     if (!(timeVar %in% names(df))) stop("Time variable not found in the data")
     if (!(eventVar %in% names(df))) stop("Event variable not found in the data")
     if (!(treatmentVar %in% names(df))) stop("Treatment variable not found in the data")
     if (doseVar != "" && !(doseVar %in% names(df))) stop("Dose variable not found in the data")
+    
     # Convert variables to appropriate types
     df[[timeVar]] <- as.numeric(df[[timeVar]])
     df[[eventVar]] <- as.numeric(df[[eventVar]])
@@ -70,6 +73,7 @@ server <- function(input, output) {
     if (doseVar != "") {
       df[[doseVar]] <- as.factor(df[[doseVar]])
     }
+    
     # Fit the survival models
     models <- list()
     model_names <- c()
@@ -83,20 +87,21 @@ server <- function(input, output) {
       models <- append(models, list(surv_T_x_D, surv_T_D, surv_D))
       model_names <- append(model_names, c("Treatment x Dose", "Treatment + Dose", "Dose"))
     }
+    
     # Create an AIC table
     aic_table <- aictab(models, modnames = model_names)
     # Select the best model
     best_model_index <- which.min(aic_table$AICc)
     best_model <- models[[best_model_index]]
-    list(aic_table = aic_table, best_model = best_model, data = df, timeVar = timeVar, eventVar = eventVar, treatmentVar = treatmentVar, doseVar = doseVar)
+    list(aic_table = aic_table, best_model = best_model, data = df, timeVar = timeVar, eventVar = eventVar, treatmentVar = treatmentVar)
   })
+  
   output$kmPlot <- renderPlot({
     analysisResults()
     df <- analysisResults()$data
     timeVar <- analysisResults()$timeVar
     eventVar <- analysisResults()$eventVar
     treatmentVar <- analysisResults()$treatmentVar
-    doseVar <- analysisResults()$doseVar
     
     # Construct the survival object directly
     surv_object <- Surv(time = df[[timeVar]], event = df[[eventVar]])
@@ -122,12 +127,24 @@ server <- function(input, output) {
       surv = surv_fit$surv,
       strata = rep(names(surv_fit$strata), surv_fit$strata) # use strata names if multiple groups
     )
+    # If there's only one group, use the column name from the formula
+    if (length(surv_fit$strata) == 1) {
+      plot_data$strata <- df[[treatmentVar]]
+    }
+    
+    # Debugging: Print the plot data
+    print("Plot data:")
+    print(head(plot_data))
     
     # Create the plot using ggplot2
-    p <- ggsurvplot(plot_data, aes(time, surv, color = strata)) +
+    p <- ggplot(plot_data, aes(time, surv, color = strata)) +
+      geom_step() +
+      geom_point() +
       labs(x = timeVar, y = "Survival Probability", color = treatmentVar) +
       ggtitle("Kaplan-Meier Survival Curve") +
-      theme_bw()
+      xlim(0, 50) +
+      theme_bw() +
+      scale_y_continuous(limits = c(0, 1), labels = scales::percent)
     
     # Facet if checkbox is checked
     if (input$facetByTreatment) {
