@@ -1,0 +1,181 @@
+Larvae,Treatment,Dose,Time,Status
+1,Tea Tree,6,96,1
+2,Tea Tree,6,96,0
+3,Tea Tree,6,96,0
+4,Tea Tree,6,96,0
+5,Tea Tree,6,96,0
+6,Tea Tree,6,96,0
+7,Tea Tree,6,96,0
+8,Tea Tree,6,96,0
+9,Tea Tree,6,96,0
+10,Tea Tree,6,96,0
+11,Tea Tree,6,96,0
+12,Tea Tree,6,96,0
+13,Tea Tree,6,96,0
+14,Tea Tree,6,96,0
+15,Tea Tree,6,96,0
+16,Tea Tree,12,48,1
+17,Tea Tree,12,48,1
+18,Tea Tree,12,48,1
+19,Tea Tree,12,72,1
+20,Tea Tree,12,72,1
+21,Tea Tree,12,96,1
+22,Tea Tree,12,96,1
+23,Tea Tree,12,96,1
+24,Tea Tree,12,96,0
+25,Tea Tree,12,96,0
+26,Tea Tree,12,96,0
+27,Tea Tree,12,96,0
+28,Tea Tree,12,96,0
+29,Tea Tree,12,96,0
+30,Tea Tree,12,96,0
+31,Tea Tree,30,48,1
+32,Tea Tree,30,72,1
+33,Tea Tree,30,72,1
+34,Tea Tree,30,72,1
+35,Tea Tree,30,72,1
+36,Tea Tree,30,96,1
+37,Tea Tree,30,96,1
+38,Tea Tree,30,96,1
+39,Tea Tree,30,96,0
+40,Tea Tree,30,96,0
+41,Tea Tree,30,96,0
+42,Tea Tree,30,96,0
+43,Tea Tree,30,96,0
+44,Tea Tree,30,96,0
+45,Tea Tree,30,96,0
+46,Rosemary,6,72,1
+47,Rosemary,6,72,1
+48,Rosemary,6,96,1
+49,Rosemary,6,96,1
+50,Rosemary,6,96,1
+51,Rosemary,6,96,0
+52,Rosemary,6,96,0
+53,Rosemary,6,96,0
+54,Rosemary,6,96,0
+55,Rosemary,6,96,0
+56,Rosemary,6,96,0
+57,Rosemary,6,96,0
+58,Rosemary,6,96,0
+59,Rosemary,6,96,0
+60,Rosemary,6,96,0
+61,Rosemary,12,48,1
+62,Rosemary,12,48,1
+63,Rosemary,12,72,1
+64,Rosemary,12,72,1
+65,Rosemary,12,72,1
+66,Rosemary,12,72,1
+67,Rosemary,12,72,1
+68,Rosemary,12,96,1
+69,Rosemary,12,96,1
+70,Rosemary,12,96,1
+71,Rosemary,12,96,1
+72,Rosemary,12,96,1
+73,Rosemary,12,96,0
+74,Rosemary,12,96,0
+75,Rosemary,12,96,0
+76,Rosemary,30,48,1
+77,Rosemary,30,48,1
+78,Rosemary,30,48,1
+79,Rosemary,30,48,1
+80,Rosemary,30,72,1
+81,Rosemary,30,72,1
+82,Rosemary,30,72,1
+83,Rosemary,30,72,1
+84,Rosemary,30,72,1
+85,Rosemary,30,96,0
+86,Rosemary,30,96,0
+87,Rosemary,30,96,0
+88,Rosemary,30,96,0
+89,Rosemary,30,96,0
+90,Rosemary,30,96,0
+91,Cedarwood,6,96,1
+92,Cedarwood,6,96,0
+93,Cedarwood,6,96,0
+94,Cedarwood,6,96,0
+95,Cedarwood,6,96,0
+96,Cedarwood,6,96,0
+97,Cedarwood,6,96,0
+98,Cedarwood,6,96,0
+99,Cedarwood,6,96,0
+100,Cedarwood,6,96,0
+101,Cedarwood,6,96,0
+102,Cedarwood,6,96,0
+103,Cedarwood,6,96,0
+104,Cedarwood,6,96,0
+105,Cedarwood,6,96,0
+106,Cedarwood,12,96,1
+107,Cedarwood,12,96,1
+108,Cedarwood,12,96,1
+109,Cedarwood,12,96,0
+110,Cedarwood,12,96,0
+111,Cedarwood,12,96,0
+112,Cedarwood,12,96,0
+113,Cedarwood,12,96,0
+114,Cedarwood,12,96,0
+115,Cedarwood,12,96,0
+116,Cedarwood,12,96,0
+117,Cedarwood,12,96,0
+118,Cedarwood,12,96,0
+119,Cedarwood,12,96,0
+120,Cedarwood,12,96,0
+121,Cedarwood,30,96,1
+122,Cedarwood,30,96,1
+123,Cedarwood,30,96,0
+124,Cedarwood,30,96,0
+125,Cedarwood,30,96,0
+126,Cedarwood,30,96,0
+127,Cedarwood,30,96,0
+128,Cedarwood,30,96,0
+129,Cedarwood,30,96,0
+130,Cedarwood,30,96,0
+131,Cedarwood,30,96,0
+132,Cedarwood,30,96,0
+133,Cedarwood,30,96,0
+134,Cedarwood,30,96,0
+135,Cedarwood,30,96,0
+136,Untreated,6,96,1
+137,Untreated,6,96,0
+138,Untreated,6,96,0
+139,Untreated,6,96,0
+140,Untreated,6,96,0
+141,Untreated,6,96,0
+142,Untreated,6,96,0
+143,Untreated,6,96,0
+144,Untreated,6,96,0
+145,Untreated,6,96,0
+146,Untreated,6,96,0
+147,Untreated,6,96,0
+148,Untreated,6,96,0
+149,Untreated,6,96,0
+150,Untreated,6,96,0
+151,Untreated,12,96,1
+152,Untreated,12,96,1
+153,Untreated,12,96,0
+154,Untreated,12,96,0
+155,Untreated,12,96,0
+156,Untreated,12,96,0
+157,Untreated,12,96,0
+158,Untreated,12,96,0
+159,Untreated,12,96,0
+160,Untreated,12,96,0
+161,Untreated,12,96,0
+162,Untreated,12,96,0
+163,Untreated,12,96,0
+164,Untreated,12,96,0
+165,Untreated,12,96,0
+166,Untreated,30,96,1
+167,Untreated,30,96,0
+168,Untreated,30,96,0
+169,Untreated,30,96,0
+170,Untreated,30,96,0
+171,Untreated,30,96,0
+172,Untreated,30,96,0
+173,Untreated,30,96,0
+174,Untreated,30,96,0
+175,Untreated,30,96,0
+176,Untreated,30,96,0
+177,Untreated,30,96,0
+178,Untreated,30,96,0
+179,Untreated,30,96,0
+180,Untreated,30,96,0
