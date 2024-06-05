@@ -1,0 +1,190 @@
+/* Use same font throughout the app */
+@import url("//fonts.googleapis.com/css?family=Montserrat");
+
+/* General styling */
+* {
+  font-family: 'Montserrat' !important;
+  color: #1F4257;
+}
+
+/* Colour hyperlinks */
+a {
+  color: #E7553C;
+}
+
+/* Title panel styling */
+.title-panel {
+  display: flex;
+  align-items: center;
+  background: linear-gradient(to right, #012169, #012169);
+  padding: 30px; /* Increased padding for a taller box */
+  border-radius: 20px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+/* Main container styling */
+.main-container {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0;
+  padding: 0 15px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Left side styling */
+.left-side {
+  padding: 0;
+}
+
+.left-side-title {
+  font-size: 60px;
+  font-weight: bold;
+  color: white;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.left-side-subtitle {
+  font-size: 24px;
+  color: white;
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* Right side logo styling */
+.right-side {
+  text-align: right;
+  display: flex;
+  align-items: center;
+}
+
+.right-side-logo {
+  text-decoration: none;
+  padding: 5px;
+}
+
+/* Style for the white line separator */
+.white-line-separator {
+    display: inline-block;
+    width: 5px;
+    background-color: white;
+    height: 148px;
+    margin: 0 20px;
+}
+
+/* Sidebar styles */
+.sidebar {
+    background-color: #f8f8f8;
+    padding: 15px;
+    border-right: 1px solid #ddd;
+}
+
+/* Panel styles */
+.panel {
+    padding: 15px;
+}
+
+/* Ensure the plot and its controls are in a relatively positioned container */
+.plot-container {
+  position: relative;
+  width: 100%;
+  height: auto;
+  padding-bottom: 150px;
+}
+
+/* Style for the plot sizing controls to ensure they are correctly positioned */
+.plot-controls {
+  position: absolute;
+  bottom: 30px;
+  right: 30px;
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 1000; /* Ensure it stays on top of other elements */
+}
+
+/* Make sure the plot itself is responsive */
+#survPlot {
+  width: 100%;
+  height: auto; /* Let the height adjust automatically */
+  min-height: 450px; /* Ensure a minimum height */
+}
+
+/* Styling for the model selection output */
+#modelSelection {
+    font-family: 'Montserrat', sans-serif;
+    white-space: pre-wrap;
+}
+
+/* Scientific table styling for model selection */
+.model-selection-table {
+    font-family: 'Montserrat', sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 15px;
+    border: none;
+}
+
+.model-selection-table th, .model-selection-table td {
+    border: none;
+    padding: 8px;
+    text-align: left;
+}
+
+.model-selection-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+    border-bottom: 2px solid #ddd;
+}
+
+.model-selection-table tr {
+    border-bottom: 1px solid #ddd;
+}
+
+.model-selection-table tr:last-child {
+    border-bottom: 2px solid #ddd;
+}
+
+.model-selection-table caption {
+    caption-side: top;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+/* Custom tab panel styles */
+.nav-tabs {
+    margin-bottom: 15px;
+}
+
+.tab-content {
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-top: none;
+}
+
+.footer {
+  text-align: center;
+  padding: 10px;
+  background-color: #f1f1f1;
+  color: #333;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Custom styles for larger text */
+.large-text {
+  font-size: 24px;
+}
+
+.footer {
+  text-align: right;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-top: 1px solid #e7e7e7;
+  border-bottom: 1px solid #e7e7e7;
+}
