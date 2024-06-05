@@ -73,10 +73,10 @@ ui <- fluidPage(
       fileInput("file", "Choose CSV File", accept = ".csv"),
       selectInput("treatment", "Treatment Column", choices = NULL),
       div(class = "dose-container",
-          div(class = "three-quarter-width",
+          div(class = "half-width",
               selectInput("dose", "Dose Column", choices = NULL)
           ),
-          div(class = "one-quarter-width",
+          div(class = "half-width",
               textInput("doseUnit", "Dose Unit", value = "")
           )
       ),
@@ -133,28 +133,27 @@ server <- function(input, output, session) {
       surv_data_val <- surv_data()
       if (!is.null(surv_data_val)) {
         surv_fit <- survfit(Surv(surv_data_val[[input$time]], surv_data_val[[input$status]]) ~
-                              surv_data_val[[input$treatment]] + surv_data_val[[input$dose]], data = surv_data_val)
+                              Treatment + Dose, data = surv_data_val)
         
-        # Create a data frame for ggplot
+        # Extract treatment and dose from the strata names
         surv_fit_df <- data.frame(
           time = surv_fit$time,
           surv = surv_fit$surv,
           strata = rep(names(surv_fit$strata), surv_fit$strata)
         )
         
-        # Extract treatment and dose from the strata names
-        surv_fit_df <- surv_fit_df %>%
-          separate(strata, into = c("Treatment", "Dose"), sep = ", ", convert = TRUE) %>%
-          mutate(Dose = factor(Dose))
+        # Separate treatment and dose in strata column
+        surv_fit_df <- tidyr::separate(surv_fit_df, strata, into = c("Treatment", "Dose"), sep = ", ")
         
         # Apply custom labels if provided
         dose_unit <- if (input$doseUnit != "") paste0(" (", input$doseUnit, ")") else ""
         dose_label <- paste0("Dose", dose_unit)
         
-        ggsurvplot(fit = surv_fit_df, group = "Treatment", conf.int = F, col = "Dose") +
+        ggsurvplot(surv_fit, data = surv_data_val, pval = TRUE, conf.int = TRUE, 
+                   risk.table = TRUE, 
+                   ggtheme = theme_minimal()) +
           labs(x = "Time", y = "Survival Probability", col = dose_label) +
-          theme_survminer() +
-          facet_wrap(Dose ~ Treatment) +
+          facet_wrap(~ Treatment + Dose) +
           theme(strip.text = element_text(size = 14)) +
           theme(plot.title = element_text(size = 14, face = "bold"))
       }
@@ -176,36 +175,6 @@ server <- function(input, output, session) {
              )
       )
     )
-  })
-  
-  
-  round_df <- function(df, digits) {
-    df[] <- lapply(df, function(x) if (is.numeric(x)) round(x, digits) else x)
-    df
-  }
-  
-  output$modelSelection <- renderUI({
-    surv_data_val <- surv_data()
-    if (!is.null(surv_data_val)) {
-      surv_T_x_D <- survreg(Surv(surv_data_val[[input$time]], surv_data_val[[input$status]]) ~
-                              surv_data_val[[input$treatment]] * surv_data_val[[input$dose]], data = surv_data_val)
-      surv_T_D <- survreg(Surv(surv_data_val[[input$time]], surv_data_val[[input$status]]) ~
-                            surv_data_val[[input$treatment]] + surv_data_val[[input$dose]], data = surv_data_val)
-      surv_T <- survreg(Surv(surv_data_val[[input$time]], surv_data_val[[input$status]]) ~
-                          surv_data_val[[input$treatment]], data = surv_data_val)
-      surv_D <- survreg(Surv(surv_data_val[[input$time]], surv_data_val[[input$status]]) ~
-                          surv_data_val[[input$dose]], data = surv_data_val)
-      
-      models <- list(surv_T_x_D, surv_T_D, surv_T, surv_D)
-      model_names <- c("Treatment x Dose", "Treatment + Dose", "Treatment", "Dose")
-      
-      aic_table <- aictab(models, modnames = model_names)
-      aic_table <- round_df(aic_table, 2)  # Round values to 2 decimal places
-      
-      HTML(htmlTable::htmlTable(aic_table,
-                                css.class = "model-selection-table",
-                                caption = "AIC Model Selection Table"))
-    }
   })
   
   output$aicText <- renderUI({

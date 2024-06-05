@@ -83,6 +83,26 @@ a {
     border-right: 1px solid #ddd;
 }
 
+/* custom.css */
+.dose-container {
+  display: flex;
+  gap: 10px;
+}
+
+.three-quarter-width {
+  flex: 3;
+}
+
+.one-quarter-width {
+  flex: 1;
+}
+
+.dose-container .form-group {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+
 /* Panel styles */
 .panel {
     padding: 15px;
