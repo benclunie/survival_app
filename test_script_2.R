@@ -81,15 +81,13 @@ ui <- fluidPage(
           )
       ),
       selectInput("time", "Time Column", choices = NULL),
-      selectInput("status", "Status Column", choices = NULL),
-      br(),
-      actionButton("plotButton", "Generate Plot")
+      selectInput("status", "Status Column", choices = NULL)
     ),
     mainPanel(
       tabsetPanel(
         tabPanel("Survival Curves",
                  fluidRow(
-                   column(12, plotOutput("survPlot", width = "100%", height = "auto"))
+                   column(12, uiOutput("plotUI"))
                  )
         ),
         tabPanel("Model Selection", htmlOutput("modelSelection"),
@@ -99,10 +97,41 @@ ui <- fluidPage(
   )
 )
 
+# Define the server logic
 server <- function(input, output, session) {
   data <- reactive({
     req(input$file)
-    read.csv(input$file$datapath)
+    
+    # Read the input file
+    data_input <- tryCatch(
+      {
+        read.csv(input$file$datapath, stringsAsFactors = FALSE, encoding = "UTF-8", na.strings = c("", "NA"))
+      },
+      error = function(e) {
+        stop("Error reading the input file. Please ensure the file is a valid CSV file with appropriate encoding and formatting.")
+      }
+    )
+    
+    # Debugging: Print the structure of the data
+    print(str(data_input))
+    
+    # Check if the input data is a data frame
+    if (!is.data.frame(data_input)) {
+      stop("The input file does not contain a valid data frame. Please check the file format and structure.")
+    }
+    
+    # Check if the input data has any rows
+    if (nrow(data_input) == 0) {
+      stop("The input file is empty. Please provide a non-empty CSV file.")
+    }
+    
+    # Check if the input data has any columns
+    if (ncol(data_input) == 0) {
+      stop("The input file does not contain any columns. Please provide a valid CSV file with at least one column.")
+    }
+    
+    # Return the input data
+    data_input
   })
   
   observe({
@@ -114,72 +143,75 @@ server <- function(input, output, session) {
   })
   
   surv_data <- reactive({
-    if (is.null(input$treatment) || is.null(input$dose) || is.null(input$time) || is.null(input$status)) {
-      return(NULL)
-    }
+    req(input$treatment, input$dose, input$time, input$status)
+    df <- data()
     
-    surv <- data()
-    colnames(surv) <- make.names(colnames(surv))
-    surv$Group <- with(surv, interaction(get(input$treatment), get(input$dose)))
-    surv$Dose <- factor(surv[[input$dose]], levels = unique(surv[[input$dose]]))
-    surv$Treatment <- factor(surv[[input$treatment]], levels = unique(surv[[input$treatment]]))
-    surv[[input$time]] <- as.numeric(surv[[input$time]])
-    surv[[input$status]] <- as.numeric(surv[[input$status]])
-    surv
+    # Data Preparation and tidying
+    colnames(df) <- make.names(colnames(df))  # Make column names syntactically valid
+    df$Group <- with(df, interaction(get(input$treatment), get(input$dose)))
+    df$Dose <- factor(df[[input$dose]], levels = unique(df[[input$dose]]))
+    df$Treatment <- factor(df[[input$treatment]], levels = unique(df[[input$treatment]]))
+    df[[input$time]] <- as.numeric(df[[input$time]])
+    df[[input$status]] <- as.numeric(df[[input$status]])
+    
+    # Debugging: Print the structure of the prepared data
+    print(str(df))
+    
+    # Explicitly convert to data.frame
+    df <- as.data.frame(df)
+    
+    # Additional debugging: print head of the dataframe
+    print(head(df))
+    
+    df
   })
   
+  plot_dimensions <- reactive({
+    list(width = input$plotWidth, height = input$plotHeight)
+  })
+  
+  output$survPlot <- renderPlot({
+    req(input$plotButton)  
+    df <- surv_data()
+    req(df)
+    
+    dimensions <- plot_dimensions()
+    
+    # Data tidying
+    df$Treatment <- factor(df$Treatment, levels = sort(unique(df$Treatment)))
+    df$Dose <- factor(df$Dose)
+    df$Group <- with(df, interaction(Treatment, Dose))
+    
+    surv_object <- Surv(df[[input$time]], df[[input$status]]) 
+    
+    # Debugging: Print the structure of the survival object
+    print(str(surv_object))
+    
+    # Simplified ggsurvplot call to isolate the problem
+    fit <- survfit(surv_object ~ Treatment + Dose, data = df)
+    print(fit)  # Debugging: Print the fit object
+    
+    # Create base survival plot 
+    plot_surv <- ggsurvplot(
+      fit,
+      data = df,  # Add the data argument
+      fun = "event",  # Function to apply to the survival curve (e.g., "event", "censor", "counting", "cumhaz")
+      legend.title = "Dose",  # Title for the legend
+      conf.int = FALSE,
+      palette = "jama",
+      pval = FALSE
+    )
+    
+    # Make the plot
+    plot_surv$plot +
+      geom_line(data = df, aes(x = Time, y = Status, group = Group, color = Dose), size = 0.75, alpha = 0.8) +
+      xlab("Time (hours)") +
+      facet_grid(~ Treatment) +
+      theme_bw()
+  }, width = reactive(input$plotWidth), height = reactive(input$plotHeight))
+  
   observeEvent(input$plotButton, {
-    output$survPlot <- renderPlot({
-      surv_data_val <- surv_data()
-      if (!is.null(surv_data_val)) {
-        # Data tidying
-        surv_data_val$Treatment <- factor(surv_data_val$Treatment, levels = sort(unique(surv_data_val$Treatment)))
-        surv_data_val$Dose <- factor(surv_data_val$Dose)
-        surv_data_val$Group <- with(surv_data_val, interaction(Treatment, Dose))
-        
-        # Survival regression models
-        surv_T_x_D <- survreg(Surv(surv_data_val[[input$time]], surv_data_val[[input$status]]) ~ Treatment * Dose, data = surv_data_val)
-        surv_T_D <- survreg(Surv(surv_data_val[[input$time]], surv_data_val[[input$status]]) ~ Treatment + Dose, data = surv_data_val)
-        surv_T <- survreg(Surv(surv_data_val[[input$time]], surv_data_val[[input$status]]) ~ Treatment, data = surv_data_val)
-        surv_D <- survreg(Surv(surv_data_val[[input$time]], surv_data_val[[input$status]]) ~ Dose, data = surv_data_val)
-        
-        # Model selection
-        models <- list(surv_T_x_D, surv_T_D, surv_T, surv_D)
-        model_names <- c("Treatment x Dose", "Treatment + Dose", "Treatment", "Dose")
-        aic_table <- aictab(models, modnames = model_names)
-        selected_model <- models[[which.min(aic_table$AICc)]]
-        
-        # Predictions and data wrangling
-        pred <- data.frame(predict(selected_model, type = "quantile", p = seq(0.01, 0.99, by = 0.01)))
-        pred$Group <- surv_data_val$Group
-        pred$Treatment <- surv_data_val$Treatment
-        pred$Dose <- surv_data_val$Dose
-        
-        pred2 <- array(dim = c(nlevels(as.factor(surv_data_val$Treatment)) * nlevels(as.factor(surv_data_val$Dose)), ncol(pred)))
-        for (i in 1:ncol(pred2)) {
-          pred2[, i] <- tapply(pred[, i], pred$Group, unique)
-        }
-        
-        y_val <- seq(0.99, 0.01, by = -0.01)
-        pred_2 <- data.frame(t(pred2[, 1:length(y_val)]), y_val)
-        pred_2_long <- gather(pred_2, key = "Group", value = "time", -y_val)
-        pred_2_long$time <- as.numeric(pred_2_long$time)
-        pred_2_long$Group <- rep(levels(surv_data_val$Group), each = length(y_val))
-        pred_2_long$Treatment <- rep(rep(levels(as.factor(surv_data_val$Treatment)), each = length(y_val)), nlevels(as.factor(surv_data_val$Dose)))
-        pred_2_long$Dose <- rep(rep(levels(as.factor(surv_data_val$Dose)), each = length(y_val) * nlevels(as.factor(surv_data_val$Treatment))))
-        pred_2_long <- na.omit(pred_2_long)
-        
-        # Create base survival plot
-        plot_surv <- ggsurvplot(selected_model, conf.int = F, col = "Dose")
-        
-        # Make the plot
-        plot_surv$plot +
-          geom_line(data = pred_2_long, aes(x = time, y = y_val, group = Group, colour = Dose), size = 0.75, alpha = 0.8) +
-          xlab("Time (hours)") +
-          facet_grid(~ Treatment) +
-          theme_bw()
-      }
-    }, width = input$plotWidth, height = input$plotHeight)
+    traceback()  
   })
   
   output$plotUI <- renderUI({

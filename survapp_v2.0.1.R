@@ -122,9 +122,8 @@ server <- function(input, output, session) {
     surv$Group <- with(surv, interaction(get(input$treatment), get(input$dose)))
     surv$Dose <- factor(surv[[input$dose]], levels = unique(surv[[input$dose]]))
     surv$Treatment <- factor(surv[[input$treatment]], levels = unique(surv[[input$treatment]]))
-    surv <- surv[surv$Treatment != "Untreated", ]
     surv[[input$time]] <- as.numeric(surv[[input$time]])
-    surv[[input$status]] <- as.numeric(surv[[input$status]])
+    surv[[input$status]] <- 1 - as.numeric(surv[[input$status]])
     surv
   })
   
@@ -151,10 +150,10 @@ server <- function(input, output, session) {
         dose_unit <- if (input$doseUnit != "") paste0(" (", input$doseUnit, ")") else ""
         dose_label <- paste0("Dose", dose_unit)
         
-        ggsurvplot(fit = surv_fit_df, group = "Treatment", conf.int = F, col = "Dose") +
+        ggsurvplot(fit = surv_fit_df, conf.int = F, col = "Dose") +
           labs(x = "Time", y = "Survival Probability", col = dose_label) +
           theme_survminer() +
-          facet_wrap(Dose ~ Treatment) +
+          facet_grid(~ Treatment) +
           theme(strip.text = element_text(size = 14)) +
           theme(plot.title = element_text(size = 14, face = "bold"))
       }
