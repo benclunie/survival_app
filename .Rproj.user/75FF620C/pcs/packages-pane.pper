@@ -1,0 +1,7 @@
+{
+    "installOptions": {
+        "installFromRepository": true,
+        "libraryPath": "C:/Users/00771300/AppData/Local/Programs/R/R-4.3.2/library",
+        "installDependencies": true
+    }
+}
