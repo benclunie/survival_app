@@ -134,58 +134,64 @@ server <- function(input, output, session) {
   
   # Reactive function to prepare survival data
   surv_data <- reactive({
-    req(input$treatment, input$dose, input$time, input$status)  # Require inputs to be available
-    df <- data()
+    req(input$file, input$treatment, input$dose, input$time, input$status)
     
-    # Data Preparation and tidying
-    colnames(df) <- make.names(colnames(df))  # Make column names syntactically valid
-    df$Group <- with(df, interaction(get(input$treatment), get(input$dose)))  # Create interaction group
-    df$Dose <- factor(df[[input$dose]], levels = unique(df[[input$dose]]))  # Factorise dose column
-    df$Treatment <- factor(df[[input$treatment]], levels = unique(df[[input$treatment]]))  # Factorise treatment column
-    df[[input$time]] <- as.numeric(df[[input$time]])  # Convert time column to numeric
-    df[[input$status]] <- as.numeric(df[[input$status]])  # Convert status column to numeric
+    # Read the input file
+    data_input <- tryCatch(
+      {
+        read.csv(input$file$datapath, stringsAsFactors = FALSE, encoding = "UTF-8", na.strings = c("", "NA"))
+      },
+      error = function(e) {
+        stop("Error reading the input file. Please ensure the file is a valid CSV file with appropriate encoding and formatting.")
+      }
+    )
     
-    # Debugging: Print the structure of the prepared data
-    print(str(df))
+    # Prepare the data
+    colnames(data_input) <- make.names(colnames(data_input))
+    data_input$Group <- with(data_input, interaction(get(input$treatment), get(input$dose)))
+    data_input$Dose <- factor(data_input[[input$dose]], levels = unique(data_input[[input$dose]]))
+    data_input$Treatment <- factor(data_input[[input$treatment]], levels = unique(data_input[[input$treatment]]))
+    data_input[[input$time]] <- as.numeric(data_input[[input$time]])
+    data_input[[input$status]] <- as.numeric(data_input[[input$status]])
     
-    # Explicitly convert to data.frame
-    df <- as.data.frame(df)
-    
-    # Additional debugging: print head of the dataframe
-    print(head(df))
-    
-    df
+    data_input
   })
   
-  # Reactive function to get plot dimensions
-  plot_dimensions <- reactive({
-    list(width = input$plotWidth, height = input$plotHeight)  # Return plot dimensions as a list
+  # Reactive expression for survival model fitting
+  surv_model <- reactive({
+    df <- surv_data()
+    req(df)
+    
+    # Debugging: Print the structure of the data frame
+    print(str(df))
+    
+    # Fit survival model
+    fit <- survfit(Surv(df[[input$time]], df[[input$status]]) ~ Treatment + Dose, data = df)
+    
+    # Debugging: Print the summary of the fitted model
+    print(fit)
+    
+    fit
   })
   
   # Render survival plot
   output$survPlot <- renderPlot({
-    input_obj <- input  # Get a copy of the input object
-    req(input_obj$plotButton)  # Require plot button to be pressed
+    req(input$file, input$treatment, input$dose, input$time, input$status, input$plotButton)  # Require all necessary inputs
+    
     df <- surv_data()
-    req(df)
-    
-    dimensions <- plot_dimensions()
-    
-    # Data tidying
-    df$Treatment <- factor(df$Treatment, levels = sort(unique(df$Treatment)))  # Factorise treatment column
-    df$Dose <- factor(df$Dose)  # Factorise dose column
-    df$Group <- with(df, interaction(Treatment, Dose))  # Create interaction group
     
     # Fit survival model
-    fit <- survfit(Surv(df[[input_obj$time]], df[[input_obj$status]]) ~ Treatment + Dose, data = df)  # Use input_obj$time and input_obj$status
-    print(fit)  # Debugging: Print the fit object
+    fit <- survfit(Surv(df[[input$time]], df[[input$status]]) ~ Treatment + Dose, data = df)
     
-    # Create base survival plot 
+    # Debugging: Print the summary of the fitted model
+    print(summary(fit))
+    
+    # Create base survival plot
     plot_surv <- ggsurvplot(
       fit,
-      data = df,  # Add the data argument
-      fun = "event",  # Function to apply to the survival curve (e.g., "event", "censor", "counting", "cumhaz")
-      legend.title = "Dose",  
+      data = df,  # Pass the data frame directly
+      fun = "event",
+      legend.title = "Dose",
       conf.int = FALSE,
       palette = "jama",
       pval = FALSE
@@ -193,11 +199,11 @@ server <- function(input, output, session) {
     
     # Make the plot
     plot_surv$plot +
-      geom_line(data = df, aes(x = Time, y = Status, group = Group, color = Dose), size = 0.75, alpha = 0.8) +
-      xlab("Time (hours)") +  
-      facet_grid(~ Treatment) +  # Facet grid by treatment
-      theme_bw()  # Use a white background theme
-  }, width = reactive(input$plotWidth), height = reactive(input$plotHeight))  # Set plot width and height based on inputs
+      geom_line(data = df, aes(x = !!as.name(input$time), y = !!as.name(input$status), group = Group, color = Dose), size = 0.75, alpha = 0.8) +
+      xlab("Time (hours)") +
+      facet_grid(~ Treatment) +
+      theme_bw()
+  }, width = reactive(input$plotWidth), height = reactive(input$plotHeight))
   
   observeEvent(input$plotButton, {
     traceback()  # Print traceback for debugging
@@ -261,3 +267,4 @@ server <- function(input, output, session) {
 
 # Run the application
 shinyApp(ui = ui, server = server)
+
