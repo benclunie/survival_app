@@ -59,20 +59,15 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       fileInput("file", "Choose CSV File", accept = ".csv"),
-      selectInput("treatment", "Treatment Column", choices = NULL),
-      div(class = "dose-container",
-          div(class = "three-quarter-width",
-              selectInput("dose", "Dose Column", choices = NULL)
-          ),
-          div(class = "one-quarter-width",
-              textInput("doseUnit", "Dose Unit", value = "")
-          )
-      ),
-      selectInput("time", "Time Column", choices = NULL),
-      selectInput("status", "Status Column", choices = NULL)
+      selectInput("model_select", "Select Model", choices = NULL)
     ),
     mainPanel(
       tabsetPanel(
+        tabPanel("Instructions",
+                 fluidRow(
+                   column(12, uiOutput("instructionsUI"))
+                 )
+        ),
         tabPanel("Survival Curves",
                  fluidRow(
                    column(12, uiOutput("plotUI"))
@@ -82,48 +77,70 @@ ui <- fluidPage(
                  uiOutput("aicText"))
       )
     )
+  ),
+  tags$footer(
+    class = "footer",
+    HTML("&copy; Ben Clunie and Joe Roberts 2024")
   )
-)
+)  
 
 server <- function(input, output, session) {
-  data <- reactive({
+  surv_data <- reactive({
     req(input$file)
-    infile <- read.csv(input$file$datapath, stringsAsFactors = FALSE, encoding = "UTF-8", na.strings = c("", "NA"))
-    infile
+    data <- read.csv(input$file$datapath, stringsAsFactors = FALSE, encoding = "UTF-8", na.strings = c("", "NA"))
+    data$Group <- paste(data$Treatment, data$Dose, sep = "_")
+    return(data)
   })
   
   observe({
-    req(data())
-    updateSelectInput(session, "treatment", choices = names(data()))
-    updateSelectInput(session, "dose", choices = names(data()))
-    updateSelectInput(session, "time", choices = names(data()))
-    updateSelectInput(session, "status", choices = names(data()))
+    req(surv_data())
+    updateSelectInput(session, "model_select", choices = c("Treatment x Dose", "Treatment + Dose", "Treatment", "Dose"))
   })
   
-  surv_data <- reactive({
-    req(input$file, input$treatment, input$dose, input$time, input$status)
-    data_input <- data()
+  selected_model <- reactive({
+    req(surv_data())
+    surv <- surv_data()
+    surv_T_x_D <- survreg(Surv(Time, Status) ~ Treatment * Dose, data = surv)
+    surv_T_D <- survreg(Surv(Time, Status) ~ Treatment + Dose, data = surv)
+    surv_T <- survreg(Surv(Time, Status) ~ Treatment, data = surv)
+    surv_D <- survreg(Surv(Time, Status) ~ Dose, data = surv)
     
-    colnames(data_input) <- make.names(colnames(data_input))
-    data_input$Group <- with(data_input, interaction(get(input$treatment), get(input$dose)))
-    data_input$Dose <- factor(data_input[[input$dose]], levels = unique(data_input[[input$dose]]))
-    data_input$Treatment <- factor(data_input[[input$treatment]], levels = unique(data_input[[input$treatment]]))
-    data_input[[input$time]] <- as.numeric(data_input[[input$time]])
-    data_input[[input$status]] <- as.numeric(data_input[[input$status]])
+    models <- list(surv_T_x_D, surv_T_D, surv_T, surv_D)
+    names(models) <- c("Treatment x Dose", "Treatment + Dose", "Treatment", "Dose")
     
-    data_input
+    models[[input$model_select]]
   })
   
-  output$survPlot <- renderPlot({
-    req(input$plotButton)
-    df <- surv_data()
+  output$survivalPlot <- renderPlot({
+    surv <- surv_data()  # Ensure the survival data is scoped here
+    model <- selected_model()
     
-    surv_fit <- survfit(Surv(df[[input$time]], df[[input$status]]) ~ Treatment + Dose, data = df)
-    plot_surv <-  ggsurvplot(surv_fit, data = df, col = "Dose", legend.title = "Dose", conf.int = FALSE,pval = FALSE)
+    pred <- data.frame(predict(model, type = "quantile", p = seq(0.01, 0.99, by = 0.01)))
+    pred$Group <- surv$Group
+    pred$Treatment <- surv$Treatment
+    pred$Dose <- surv$Dose
     
-    plot_surv$plot + 
-      xlab("Time (hours)") + 
-      facet_grid(~ Treatment) + 
+    pred2 <- array(dim = c(nlevels(as.factor(surv$Treatment)) * nlevels(as.factor(surv$Dose)), ncol(pred)))
+    for (i in 1:ncol(pred2)) {
+      pred2[, i] <- tapply(pred[, i], pred$Group, unique)
+    }
+    
+    y_val <- seq(0.99, 0.01, by = -0.01)
+    pred2 <- data.frame(t(pred2[, 1:length(y_val)]), y_val)
+    pred2_long <- gather(pred2, key = "Group", value = "time", -y_val)
+    pred2_long$time <- as.numeric(pred2_long$time)
+    pred2_long$Group <- rep(levels(as.factor(surv$Group)), each = length(y_val))
+    pred2_long$Treatment <- rep(rep(levels(as.factor(surv$Treatment)), each = length(y_val)), nlevels(as.factor(surv$Dose)))
+    pred2_long$Dose <- rep(rep(levels(as.factor(surv$Dose)), each = length(y_val) * nlevels(as.factor(surv$Treatment))))
+    pred2_long <- na.omit(pred2_long)
+    
+    surv_fit <- survfit(Surv(Time, Status) ~ Treatment + Dose, data = surv)
+    plot_surv <- ggsurvplot(fit = surv_fit, data = surv, conf.int = FALSE, col = "Dose")
+    
+    plot_surv$plot +
+      geom_line(data = pred2_long, aes(x = time, y = y_val, group = Group, colour = Dose), size = 0.75, alpha = 0.8) +
+      xlab("Time (hours)") +
+      facet_grid(~Treatment) +
       theme_bw()
   }, width = reactive(input$plotWidth), height = reactive(input$plotHeight))
   
@@ -131,7 +148,7 @@ server <- function(input, output, session) {
     fluidRow(
       column(12,
              div(class = "plot-container",
-                 plotOutput("survPlot", width = "100%", height = "auto"),
+                 plotOutput("survivalPlot", width = "100%", height = "auto"),
                  div(class = "plot-controls",
                      fluidRow(
                        column(4, numericInput("plotWidth", "Plot Width", value = 700, min = 300)),
@@ -153,10 +170,10 @@ server <- function(input, output, session) {
     surv <- surv_data()
     req(surv)
     
-    surv_T_x_D <- survreg(Surv(surv[[input$time]], surv[[input$status]]) ~ Treatment * Dose, data = surv)
-    surv_T_D <- survreg(Surv(surv[[input$time]], surv[[input$status]]) ~ Treatment + Dose, data = surv)
-    surv_T <- survreg(Surv(surv[[input$time]], surv[[input$status]]) ~ Treatment, data = surv)
-    surv_D <- survreg(Surv(surv[[input$time]], surv[[input$status]]) ~ Dose, data = surv)
+    surv_T_x_D <- survreg(Surv(surv$Time, surv$Status) ~ Treatment * Dose, data = surv)
+    surv_T_D <- survreg(Surv(surv$Time, surv$Status) ~ Treatment + Dose, data = surv)
+    surv_T <- survreg(Surv(surv$Time, surv$Status) ~ Treatment, data = surv)
+    surv_D <- survreg(Surv(surv$Time, surv$Status) ~ Dose, data = surv)
     
     models <- list(surv_T_x_D, surv_T_D, surv_T, surv_D)
     model_names <- c("Treatment x Dose", "Treatment + Dose", "Treatment", "Dose")
@@ -176,6 +193,13 @@ server <- function(input, output, session) {
       <p><strong>AIC wt</strong> = relative likelihood weighting for the relevant model</p>
       <p><strong>Cum wt</strong> = cumulative AIC wt values</p>
       <p><strong>LL</strong> = log likelihood (maximum likelihood estimation)</p>
+    ")
+  })
+  
+  output$instructionsUI <- renderUI({
+    HTML("
+      <h3>Instructions</h3>
+      <p>Add your instructions here.</p>
     ")
   })
 }
