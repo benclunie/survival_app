@@ -1,4 +1,5 @@
 library(shiny)
+library(shinyjs)
 library(survival)
 library(survminer)
 library(AICcmodavg)
@@ -6,9 +7,11 @@ library(tidyr)
 library(ggplot2)
 library(dplyr)
 library(htmlTable)
-library(colourpicker)  # Add this for color input
+library(RColorBrewer)
+library(viridis)
 
 ui <- fluidPage(
+  useShinyjs(),
   includeCSS("custom.css"),
   tags$head(
     tags$link(rel = 'stylesheet', type = 'text/css', href = 'https://fonts.googleapis.com/css?family=Montserrat&display=swap')
@@ -21,10 +24,10 @@ ui <- fluidPage(
         tags$div(
           class = "left-side",
           tags$div(
-            tags$span("survivoR", class = "left-side-title") 
+            tags$span("survivoR", class = "left-side-title")
           ),
           tags$div(
-            tags$span("An App for Modelling Survival Analysis for Insect Bioassays", class = "left-side-subtitle") 
+            tags$span("An App for Modelling Survival Analysis for Insect Bioassays", class = "left-side-subtitle")
           )
         ),
         tags$div(
@@ -32,7 +35,7 @@ ui <- fluidPage(
           tags$a(
             href = 'https://www.harper-adams.ac.uk/',
             tags$img(
-              src = 'HAU.png', 
+              src = 'HAU.png',
               height = 201,
               width = 148
             ),
@@ -60,10 +63,21 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       fileInput("file", "Choose CSV File", accept = ".csv"),
-      selectInput("model_select", "Select Model", choices = NULL)
+      selectInput("model_select", "Select Model", choices = NULL),
+      conditionalPanel(
+        condition = "input.tabs == 'Survival Curves'",
+        selectInput("facet_formula", "Facet By",
+                    choices = list("Treatment" = "Treatment", "Dose ~ Treatment" = "Dose ~ Treatment"),
+                    selected = "Dose ~ Treatment"),
+        selectInput("color_palette", "Select Colour Palette",
+                    choices = c(rownames(brewer.pal.info),
+                                "viridis", "magma", "plasma", "inferno", "cividis"),
+                    selected = "Set1")
+      )
     ),
     mainPanel(
       tabsetPanel(
+        id = "tabs",
         tabPanel("Instructions",
                  fluidRow(
                    column(12, uiOutput("instructionsUI"))
@@ -74,10 +88,14 @@ ui <- fluidPage(
                    column(12, uiOutput("plotUI"))
                  )
         ),
-        tabPanel("Model Selection", htmlOutput("modelSelection"), 
+        tabPanel("Model Selection", htmlOutput("modelSelection"),
                  uiOutput("aicText"))
       )
     )
+  ),
+  tags$footer(
+    class = "footer",
+    HTML("&copy; Ben Clunie and Joe Roberts 2024")
   )
 )
 
@@ -85,7 +103,20 @@ server <- function(input, output, session) {
   surv_data <- reactive({
     req(input$file)
     data <- read.csv(input$file$datapath, stringsAsFactors = FALSE, encoding = "UTF-8", na.strings = c("", "NA"))
-    data$Group <- paste(data$Treatment, data$Dose, sep = "_")
+    
+    # Convert Treatment and Dose to factors with levels sorted
+    data$Treatment <- factor(data$Treatment, levels = sort(unique(data$Treatment)))
+    data$Dose <- factor(data$Dose, levels = sort(unique(as.numeric(data$Dose))))
+    
+    # Print levels for checking
+    print("Levels of Treatment:")
+    print(levels(data$Treatment))
+    print("Levels of Dose:")
+    print(levels(data$Dose))
+    
+    # Create a Group variable
+    data$Group <- with(data, interaction(Treatment, Dose))
+    
     return(data)
   })
   
@@ -97,6 +128,14 @@ server <- function(input, output, session) {
   selected_model <- reactive({
     req(surv_data())
     surv <- surv_data()
+    
+    # Print levels for checking before fitting models
+    print("Levels of Treatment before fitting models:")
+    print(levels(surv$Treatment))
+    print("Levels of Dose before fitting models:")
+    print(levels(surv$Dose))
+    
+    # Fit different models
     surv_T_x_D <- survreg(Surv(Time, Status) ~ Treatment * Dose, data = surv)
     surv_T_D <- survreg(Surv(Time, Status) ~ Treatment + Dose, data = surv)
     surv_T <- survreg(Surv(Time, Status) ~ Treatment, data = surv)
@@ -108,29 +147,20 @@ server <- function(input, output, session) {
     models[[input$model_select]]
   })
   
-  output$colorPickersUI <- renderUI({
-    req(surv_data())
-    data <- surv_data()
-    groups <- unique(data$Group)
-    
-    lapply(seq_along(groups), function(i) {
-      fluidRow(
-        column(6, strong(groups[i])),
-        column(6, colourInput(paste0("color_", i), "Color", value = "#56B4E9"))
-      )
-    })
-  })
-  
   output$survivalPlot <- renderPlot({
-    surv <- surv_data()  # Ensure the survival data is scoped here
+    surv <- surv_data()
     model <- selected_model()
     
+    # Predict survival curves
     pred <- data.frame(predict(model, type = "quantile", p = seq(0.01, 0.99, by = 0.01)))
+    
+    # Add columns to pred
     pred$Group <- surv$Group
     pred$Treatment <- surv$Treatment
     pred$Dose <- surv$Dose
     
-    pred2 <- array(dim = c(nlevels(as.factor(surv$Treatment)) * nlevels(as.factor(surv$Dose)), ncol(pred)))
+    # Initialize array for predictions
+    pred2 <- array(dim = c(nlevels(surv$Treatment) * nlevels(surv$Dose), ncol(pred)))
     for (i in 1:ncol(pred2)) {
       pred2[, i] <- tapply(pred[, i], pred$Group, unique)
     }
@@ -139,32 +169,33 @@ server <- function(input, output, session) {
     pred2 <- data.frame(t(pred2[, 1:length(y_val)]), y_val)
     pred2_long <- gather(pred2, key = "Group", value = "time", -y_val)
     pred2_long$time <- as.numeric(pred2_long$time)
-    pred2_long$Group <- rep(levels(as.factor(surv$Group)), each = length(y_val))
-    pred2_long$Treatment <- rep(rep(levels(as.factor(surv$Treatment)), each = length(y_val)), nlevels(as.factor(surv$Dose)))
-    pred2_long$Dose <- rep(rep(levels(as.factor(surv$Dose)), each = length(y_val) * nlevels(as.factor(surv$Treatment))))
+    pred2_long$Group <- rep(levels(surv$Group), each = length(y_val))
+    pred2_long$Treatment <- rep(rep(levels(surv$Treatment), each = length(y_val)), nlevels(surv$Dose))
+    pred2_long$Dose <- rep(rep(levels(surv$Dose), each = length(y_val) * nlevels(surv$Treatment)))
     pred2_long <- na.omit(pred2_long)
     
+    # Print levels for checking before plotting
+    print("Levels of Treatment before plotting:")
+    print(levels(pred2_long$Treatment))
+    print("Levels of Dose before plotting:")
+    print(levels(pred2_long$Dose))
+    
     surv_fit <- survfit(Surv(Time, Status) ~ Treatment + Dose, data = surv)
-    
-    selected_theme <- switch(input$theme_select,
-                             "bw" = theme_bw(),
-                             "minimal" = theme_minimal(),
-                             "classic" = theme_classic(),
-                             "void" = theme_void(),
-                             theme_bw())
-    
-    # Retrieve custom colors
-    custom_colors <- sapply(seq_along(unique(surv$Group)), function(i) {
-      input[[paste0("color_", i)]]
-    })
-    
-    plot_surv <- ggsurvplot(fit = surv_fit, data = surv, conf.int = FALSE, palette = custom_colors)
+    plot_surv <- ggsurvplot(fit = surv_fit, data = surv, conf.int = FALSE, col = "Dose")
     
     plot_surv$plot +
-      geom_line(data = pred2_long, aes(x = time, y = y_val, group = Group, colour = Group), size = 0.75, alpha = 0.8) +
+      geom_line(data = pred2_long, aes(x = time, y = y_val, group = Group, colour = Dose), size = 0.75, alpha = 0.8) +
       xlab("Time (hours)") +
-      facet_grid(~Treatment) +
-      selected_theme
+      facet_grid(as.formula(paste("~", input$facet_formula)), scales = "free", space = "free_x") +
+      scale_colour_manual(values = if (input$color_palette %in% rownames(brewer.pal.info)) {
+        brewer.pal(n = 8, name = input$color_palette)
+      } else {
+        viridis::viridis_pal(option = input$color_palette)(8)
+      }) +
+      theme_bw() +
+      theme(strip.background = element_blank(),
+            strip.placement = "outside",
+            strip.text = element_text(size = 12))
   }, width = reactive(input$plotWidth), height = reactive(input$plotHeight))
   
   output$plotUI <- renderUI({
@@ -177,13 +208,6 @@ server <- function(input, output, session) {
                        column(4, numericInput("plotWidth", "Plot Width", value = 700, min = 300)),
                        column(4, numericInput("plotHeight", "Plot Height", value = 500, min = 300)),
                        column(4, br(), actionButton("plotButton", "Generate Plot"))
-                     ),
-                     hr(),
-                     fluidRow(
-                       column(4, selectInput("theme_select", "Select Plot Theme", choices = c("bw", "minimal", "classic", "void")))
-                     ),
-                     fluidRow(
-                       column(12, uiOutput("colorPickersUI"))
                      )
                  )
              )
