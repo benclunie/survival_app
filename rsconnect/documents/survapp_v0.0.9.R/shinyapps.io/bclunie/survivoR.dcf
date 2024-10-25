@@ -1,0 +1,12 @@
+name: survivoR
+title: survivoR
+username: bclunie
+account: bclunie
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 13122322
+bundleId: 9268975
+url: https://bclunie.shinyapps.io/survivoR/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

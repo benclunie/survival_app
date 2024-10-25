@@ -138,7 +138,7 @@ server <- function(input, output, session) {
     plot_surv <- ggsurvplot(fit = surv_fit, data = surv, conf.int = FALSE, col = "Dose")
     
     plot_surv$plot +
-      geom_line(data = pred2_long, aes(x = time, y = y_val, group = Group, colour = Dose), size = 0.75, alpha = 0.8) +
+      geom_line(data = pred2_long, aes(x = time, y = y_val, group = Group, colour = Dose), linewidth = 0.75, alpha = 0.8) +
       xlab("Time (hours)") +
       facet_grid(~Treatment) +
       theme_bw()
